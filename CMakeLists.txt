@@ -2816,6 +2816,7 @@ set(NativeAssets
 	assets/themes
 	assets/vfpu
 	assets/Roboto-Condensed.ttf
+	assets/DroidSansCJK-Regular.ttf
 	assets/7z.png
 	assets/compat.ini
 	assets/infra-dns.json
