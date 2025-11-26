@@ -4,7 +4,7 @@ set(GIT_VERSION_UPDATE "1")
 
 find_package(Git)
 if(GIT_FOUND AND EXISTS "${SOURCE_DIR}/.git/")
-	execute_process(COMMAND ${GIT_EXECUTABLE} describe --always
+	execute_process(COMMAND ${GIT_EXECUTABLE} describe --always --tags
 		WORKING_DIRECTORY ${SOURCE_DIR}
 		RESULT_VARIABLE exit_code
 		OUTPUT_VARIABLE GIT_VERSION)
