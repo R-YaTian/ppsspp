@@ -1,0 +1,35 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 8a442c00..d5b1b537 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -98,7 +98,7 @@ option(ENABLE_RTTI "Enables RTTI" OFF)
+ option(ENABLE_EXCEPTIONS "Enables Exceptions" OFF)
+ option(ENABLE_OPT "Enables spirv-opt capability if present" ON)
+ 
+-if(MINGW OR (CMAKE_SYSTEM_NAME STREQUAL "Darwin" AND ${CMAKE_CXX_COMPILER_ID} MATCHES "GNU"))
++if(MINGW OR (CMAKE_SYSTEM_NAME STREQUAL "Darwin" AND ${CMAKE_CXX_COMPILER_ID} MATCHES "GNU") OR CMAKE_SYSTEM_NAME STREQUAL "NintendoSwitch")
+     # Workaround for CMake behavior on Mac OS with gcc, cmake generates -Xarch_* arguments
+     # which gcc rejects
+     option(ENABLE_PCH "Enables Precompiled header" OFF)
+@@ -141,7 +141,7 @@ if(WIN32)
+         include(ChooseMSVCCRT.cmake)
+     endif()
+     add_definitions(-DGLSLANG_OSINCLUDE_WIN32)
+-elseif(UNIX)
++elseif(UNIX OR "${CMAKE_SYSTEM_NAME}" STREQUAL "NintendoSwitch")
+     add_definitions(-DGLSLANG_OSINCLUDE_UNIX)
+ else()
+     message("unknown platform")
+diff --git a/glslang/CMakeLists.txt b/glslang/CMakeLists.txt
+index 7d8790c4..b1ae4ad1 100644
+--- a/glslang/CMakeLists.txt
++++ b/glslang/CMakeLists.txt
+@@ -33,7 +33,7 @@
+ 
+ if(WIN32)
+     add_subdirectory(OSDependent/Windows)
+-elseif(UNIX OR "${CMAKE_SYSTEM_NAME}" STREQUAL "Fuchsia")
++elseif(UNIX OR "${CMAKE_SYSTEM_NAME}" STREQUAL "Fuchsia" OR "${CMAKE_SYSTEM_NAME}" STREQUAL "NintendoSwitch")
+     add_subdirectory(OSDependent/Unix)
+ else()
+     message("unknown platform")

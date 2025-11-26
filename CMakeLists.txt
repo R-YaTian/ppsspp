@@ -224,6 +224,27 @@ if(USE_LIBNX)
 	set(USE_ARMIPS OFF) # Needs trivial changes in filesystem submodule
 	add_definitions(-DHAVE_LIBNX -D__SWITCH__)
 	add_compile_options(-fPIC)
+
+	set(GLSLANG_PATH "${CMAKE_SOURCE_DIR}/ext/glslang")
+	set(GLSLANG_PATCH "${CMAKE_SOURCE_DIR}/patch/glslang/NintendoSwitch.patch")
+	set(PATCH_MARKER "${GLSLANG_PATH}/.patched")
+
+	if(NOT EXISTS "${PATCH_MARKER}")
+		message(STATUS "Applying patch to glslang for Nintendo Switch target...")
+
+		execute_process(
+			COMMAND git -C "${GLSLANG_PATH}" apply "${GLSLANG_PATCH}"
+			RESULT_VARIABLE result
+			OUTPUT_VARIABLE out
+			ERROR_VARIABLE err
+		)
+
+		if(NOT result EQUAL 0)
+			message(FATAL_ERROR "Failed to apply patch: ${err}")
+		endif()
+
+		file(WRITE "${PATCH_MARKER}" "patched")
+	endif()
 endif()
 
 if(LIBRETRO)
