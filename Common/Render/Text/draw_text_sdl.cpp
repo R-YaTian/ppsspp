@@ -263,7 +263,7 @@ uint32_t TextDrawerSDL::SetFont(const char *fontName, int size, int flags) {
 
 	if (!font) {
 		File::FileInfo fileInfo;
-   		g_VFS.GetFileInfo("Roboto-Condensed.ttf", &fileInfo);
+   		g_VFS.GetFileInfo("DroidSansCJK-Regular.ttf", &fileInfo);
 		font = TTF_OpenFont(fileInfo.fullName.c_str(), ptSize);
 	}
 
