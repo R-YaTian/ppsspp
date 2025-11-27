@@ -3014,6 +3014,25 @@ if(NOT ANDROID)
 	file(INSTALL ${NativeAssets} DESTINATION assets)
 	file(INSTALL assets/flash0 DESTINATION assets)
 endif()
+if(USE_LIBNX)
+	execute_process(
+		COMMAND git describe --always --tags
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+		OUTPUT_VARIABLE GIT_DESCRIBE
+		OUTPUT_STRIP_TRAILING_WHITESPACE
+	)
+	string(REGEX REPLACE "-[0-9]+-g[0-9a-f]+$" "" CLEAN_VERSION "${GIT_DESCRIBE}")
+	nx_generate_nacp(${TargetBin}.nacp
+		NAME "PPSSPP (GL)"
+		AUTHOR "PPSSPP Team, M4xw"
+		VERSION "${CLEAN_VERSION}"
+	)
+	nx_create_nro(${TargetBin}
+		OUTPUT PPSSPP_GL.nro
+		NACP ${TargetBin}.nacp
+		ICON "${CMAKE_SOURCE_DIR}/icons/icon-512.jpg"
+	)
+endif()
 # packaging and code signing
 if(IOS AND NOT LIBRETRO)
 	if(IOS_APP_STORE)
