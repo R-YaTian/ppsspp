@@ -41,6 +41,7 @@
 
 static double g_lastSaveTime = -1.0;
 
+// Actually this should be called on both saves and loads, since just after a load it's safe to exit.
 void ResetSecondsSinceLastGameSave() {
 	g_lastSaveTime = time_now_d();
 }
@@ -137,8 +138,7 @@ int PSPSaveDialog::Init(int paramAddr) {
 	INFO_LOG(Log::sceUtility,"sceUtilitySavedataInitStart(%08x) : Game key (hex): %s", paramAddr, param.GetKey(param.GetPspParam()).c_str());
 
 	yesnoChoice = 1;
-	switch ((SceUtilitySavedataFocus)(u32)param.GetPspParam()->focus)
-	{
+	switch ((SceUtilitySavedataFocus)(u32)param.GetPspParam()->focus) {
 	case SCE_UTILITY_SAVEDATA_FOCUS_NAME:
 		currentSelectedSave = param.GetSaveNameIndex(param.GetPspParam());
 		break;
@@ -204,8 +204,7 @@ int PSPSaveDialog::Init(int paramAddr) {
 			break;
 		case SCE_UTILITY_SAVEDATA_TYPE_SAVE:
 			DEBUG_LOG(Log::sceUtility, "Saving. Title: %s Save: %s File: %s", param.GetGameName(param.GetPspParam()).c_str(), param.GetGameName(param.GetPspParam()).c_str(), param.GetFileName(param.GetPspParam()).c_str());
-			if (param.GetFileInfo(0).size != 0)
-			{
+			if (param.GetFileInfo(0).size != 0) {
 				yesnoChoice = 0;
 				display = DS_SAVE_CONFIRM_OVERWRITE;
 			}
@@ -972,15 +971,15 @@ int PSPSaveDialog::Update(int animSpeed)
 			DisplayBanner(DB_DELETE);
 
 			if (IsButtonPressed(cancelButtonFlag) || (IsButtonPressed(okButtonFlag) && yesnoChoice == 0)) {
-				if(param.GetPspParam()->mode == SCE_UTILITY_SAVEDATA_TYPE_LISTDELETE || param.GetPspParam()->mode == SCE_UTILITY_SAVEDATA_TYPE_LISTALLDELETE)
+				if (param.GetPspParam()->mode == SCE_UTILITY_SAVEDATA_TYPE_LISTDELETE || param.GetPspParam()->mode == SCE_UTILITY_SAVEDATA_TYPE_LISTALLDELETE)
 					display = DS_DELETE_LIST_CHOICE;
 				else {
 					param.GetPspParam()->common.result = SCE_UTILITY_DIALOG_RESULT_CANCEL;
 					StartFade(false);
 				}
 			} else if (IsButtonPressed(okButtonFlag)) {
-					display = DS_DELETE_DELETING;
-					StartIOThread();
+				display = DS_DELETE_DELETING;
+				StartIOThread();
 			}
 
 			EndDraw();
@@ -1108,6 +1107,7 @@ void PSPSaveDialog::ExecuteIOAction() {
 		} else {
 			display = DS_LOAD_FAILED;
 		}
+		ResetSecondsSinceLastGameSave();
 		break;
 	case DS_SAVE_SAVING:
 		SaveState::NotifySaveData();
@@ -1117,6 +1117,7 @@ void PSPSaveDialog::ExecuteIOAction() {
 		} else {
 			display = DS_SAVE_FAILED;
 		}
+		ResetSecondsSinceLastGameSave();
 		break;
 	case DS_DELETE_DELETING:
 		if (param.Delete(param.GetPspParam(), currentSelectedSave)) {
@@ -1149,11 +1150,13 @@ void PSPSaveDialog::ExecuteNotVisibleIOAction() {
 	case SCE_UTILITY_SAVEDATA_TYPE_LOAD: // Only load and exit
 	case SCE_UTILITY_SAVEDATA_TYPE_AUTOLOAD:
 		result = param.Load(param.GetPspParam(), GetSelectedSaveDirName(), currentSelectedSave);
+		ResetSecondsSinceLastGameSave();
 		break;
 	case SCE_UTILITY_SAVEDATA_TYPE_SAVE: // Only save and exit
 	case SCE_UTILITY_SAVEDATA_TYPE_AUTOSAVE:
 		SaveState::NotifySaveData();
 		result = param.Save(param.GetPspParam(), GetSelectedSaveDirName());
+		ResetSecondsSinceLastGameSave();
 		break;
 	case SCE_UTILITY_SAVEDATA_TYPE_SIZES:
 		result = param.GetSizes(param.GetPspParam());
@@ -1197,16 +1200,19 @@ void PSPSaveDialog::ExecuteNotVisibleIOAction() {
 	// TODO: Should reset the directory's other files.
 	case SCE_UTILITY_SAVEDATA_TYPE_MAKEDATA:
 	case SCE_UTILITY_SAVEDATA_TYPE_MAKEDATASECURE:
-		SaveState::NotifySaveData();
 		result = param.Save(param.GetPspParam(), GetSelectedSaveDirName(), param.GetPspParam()->mode == SCE_UTILITY_SAVEDATA_TYPE_MAKEDATASECURE);
 		if (result == SCE_UTILITY_SAVEDATA_ERROR_SAVE_MS_NOSPACE) {
 			result = SCE_UTILITY_SAVEDATA_ERROR_RW_MEMSTICK_FULL;
+		} else {
+			SaveState::NotifySaveData();
+			ResetSecondsSinceLastGameSave();
 		}
 		break;
 	case SCE_UTILITY_SAVEDATA_TYPE_WRITEDATA:
 	case SCE_UTILITY_SAVEDATA_TYPE_WRITEDATASECURE:
 		SaveState::NotifySaveData();
 		result = param.Save(param.GetPspParam(), GetSelectedSaveDirName(), param.GetPspParam()->mode == SCE_UTILITY_SAVEDATA_TYPE_WRITEDATASECURE);
+		ResetSecondsSinceLastGameSave();
 		break;
 	case SCE_UTILITY_SAVEDATA_TYPE_READDATA:
 	case SCE_UTILITY_SAVEDATA_TYPE_READDATASECURE:
@@ -1215,6 +1221,7 @@ void PSPSaveDialog::ExecuteNotVisibleIOAction() {
 			result = SCE_UTILITY_SAVEDATA_ERROR_RW_DATA_BROKEN;
 		if (result == SCE_UTILITY_SAVEDATA_ERROR_LOAD_NO_DATA)
 			result = SCE_UTILITY_SAVEDATA_ERROR_RW_NO_DATA;
+		ResetSecondsSinceLastGameSave();
 		break;
 	case SCE_UTILITY_SAVEDATA_TYPE_ERASE:
 	case SCE_UTILITY_SAVEDATA_TYPE_ERASESECURE:

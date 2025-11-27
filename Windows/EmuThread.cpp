@@ -300,7 +300,7 @@ void MainThreadFunc() {
 		while (GetUIState() != UISTATE_EXIT) {  //  && GetUIState() != UISTATE_EXCEPTION
 			// We're here again, so the game quit.  Restart Run() which controls the UI.
 			// This way they can load a new game.
-			if (!Core_IsActive())
+			if (!(Core_IsActive() || Core_IsStepping()))
 				UpdateUIState(UISTATE_MENU);
 			Core_StateProcessed();
 			NativeFrame(graphicsContext);
@@ -312,7 +312,6 @@ void MainThreadFunc() {
 		Core_StateProcessed();
 		NativeFrame(graphicsContext);
 	}
-	Core_WaitInactive();
 
 	g_inLoop = false;
 
@@ -335,6 +334,7 @@ void MainThreadFunc() {
 	g_graphicsContext->Shutdown();
 
 	delete g_graphicsContext;
+	g_graphicsContext = nullptr;
 
 	RECT rc;
 	if (console && GetWindowRect(console, &rc) && !IsIconic(console)) {

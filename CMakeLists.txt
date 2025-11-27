@@ -1744,6 +1744,7 @@ add_library(kirk STATIC
 	ext/libkirk/ec.c
 	ext/libkirk/kirk_engine.c
 	ext/libkirk/kirk_engine.h
+	ext/libkirk/kirk_common.h
 )
 target_include_directories(kirk PRIVATE ext/libkirk)
 
@@ -2255,6 +2256,7 @@ add_library(${CoreLibName} ${CoreLinkType}
 	Core/HLE/__sceAudio.h
 	Core/HLE/sceAdler.cpp
 	Core/HLE/sceAdler.h
+	Core/HLE/AtracBase.h
 	Core/HLE/AtracCtx.cpp
 	Core/HLE/AtracCtx.h
 	Core/HLE/AtracCtx2.cpp

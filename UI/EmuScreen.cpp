@@ -539,9 +539,8 @@ void EmuScreen::sendMessage(UIMessage message, const char *value) {
 			WARN_LOG(Log::Loader, "Can't stop during a pending boot");
 			return;
 		}
-		Achievements::UnloadGame();
-		PSP_Shutdown(true);
-		System_Notify(SystemNotification::DISASSEMBLY);
+		// The destructor will take care of shutting down.
+		screenManager()->switchScreen(new MainScreen());
 	} else if (message == UIMessage::REQUEST_GAME_RESET) {
 		if (bootPending_) {
 			WARN_LOG(Log::Loader, "Can't reset during a pending boot");
@@ -900,19 +899,20 @@ void EmuScreen::ProcessVKey(VirtKey virtKey) {
 	case VIRTKEY_TEXTURE_DUMP:
 		g_Config.bSaveNewTextures = !g_Config.bSaveNewTextures;
 		if (g_Config.bSaveNewTextures) {
-			g_OSD.Show(OSDType::MESSAGE_INFO, sc->T("saveNewTextures_true", "Textures will now be saved to your storage"), 2.0, "savetexturechanged");
-			System_PostUIMessage(UIMessage::GPU_CONFIG_CHANGED);
+			g_OSD.Show(OSDType::MESSAGE_SUCCESS, sc->T("saveNewTextures_true", "Textures will now be saved to your storage"), 2.0, "savetexturechanged");
 		} else {
 			g_OSD.Show(OSDType::MESSAGE_INFO, sc->T("saveNewTextures_false", "Texture saving was disabled"), 2.0, "savetexturechanged");
 		}
+		System_PostUIMessage(UIMessage::GPU_CONFIG_CHANGED);
 		break;
 
 	case VIRTKEY_TEXTURE_REPLACE:
 		g_Config.bReplaceTextures = !g_Config.bReplaceTextures;
-		if (g_Config.bReplaceTextures)
-			g_OSD.Show(OSDType::MESSAGE_INFO, sc->T("replaceTextures_true", "Texture replacement enabled"), 2.0, "replacetexturechanged");
-		else
+		if (g_Config.bReplaceTextures) {
+			g_OSD.Show(OSDType::MESSAGE_SUCCESS, sc->T("replaceTextures_true", "Texture replacement enabled"), 2.0, "replacetexturechanged");
+		} else {
 			g_OSD.Show(OSDType::MESSAGE_INFO, sc->T("replaceTextures_false", "Textures are no longer being replaced"), 2.0, "replacetexturechanged");
+		}
 		System_PostUIMessage(UIMessage::GPU_CONFIG_CHANGED);
 		break;
 
@@ -1470,16 +1470,11 @@ void EmuScreen::update() {
 
 bool EmuScreen::checkPowerDown() {
 	// This is for handling things like sceKernelExitGame().
-	if (coreState == CORE_POWERDOWN && PSP_GetBootState() == BootState::Complete && !bootPending_) {
-		bool shutdown = false;
-		if (PSP_IsInited()) {
-			Achievements::UnloadGame();
-			PSP_Shutdown(true);
-			shutdown = true;
-		}
+	// Also for REQUEST_STOP.
+	if (coreState == CORE_POWERDOWN && (PSP_GetBootState() == BootState::Complete || PSP_GetBootState() == BootState::Off) && !bootPending_) {
 		INFO_LOG(Log::System, "SELF-POWERDOWN!");
 		screenManager()->switchScreen(new MainScreen());
-		return shutdown;
+		return true;
 	}
 	return false;
 }

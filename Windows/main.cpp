@@ -48,13 +48,13 @@
 #include "Common/Data/Encoding/Utf8.h"
 #include "Common/Net/Resolve.h"
 #include "Common/TimeUtil.h"
-#include "W32Util/DarkMode.h"
-#include "W32Util/ShellUtil.h"
 
 #include "Core/Config.h"
 #include "Core/ConfigValues.h"
 #include "Core/SaveState.h"
 #include "Core/Instance.h"
+#include "Core/HLE/Plugins.h"
+#include "Core/RetroAchievements.h"
 #include "Windows/EmuThread.h"
 #include "Windows/WindowsAudio.h"
 #include "ext/disarm.h"
@@ -77,6 +77,7 @@
 #endif
 #include "Windows/W32Util/ContextMenu.h"
 #include "Windows/W32Util/DialogManager.h"
+#include "Windows/W32Util/DarkMode.h"
 #include "Windows/W32Util/ShellUtil.h"
 
 #include "Windows/Debugger/CtrlDisAsmView.h"
@@ -413,7 +414,11 @@ bool System_GetPropertyBool(SystemProperty prop) {
 	case SYSPROP_CAN_READ_BATTERY_PERCENTAGE:
 		return true;
 	case SYSPROP_ENOUGH_RAM_FOR_FULL_ISO:
+#if PPSSPP_ARCH(64BIT)
 		return true;
+#else
+		return false;
+#endif
 	default:
 		return false;
 	}
@@ -432,8 +437,11 @@ void System_Notify(SystemNotification notification) {
 			g_symbolMap->SortSymbols();  // internal locking is performed here
 		PostMessage(MainWindow::GetHWND(), WM_USER + 1, 0, 0);
 
-		if (disasmWindow)
+		if (Achievements::HardcoreModeActive()) {
+			MainWindow::HideDebugWindows();
+		} else if (disasmWindow) {
 			PostDialogMessage(disasmWindow, WM_DEB_SETDEBUGLPARAM, 0, (LPARAM)Core_IsStepping());
+		}
 		break;
 	}
 
@@ -441,7 +449,7 @@ void System_Notify(SystemNotification notification) {
 	{
 		PostMessage(MainWindow::GetHWND(), MainWindow::WM_USER_UPDATE_UI, 0, 0);
 
-		int peers = GetInstancePeerCount();
+		const int peers = GetInstancePeerCount();
 		if (PPSSPP_ID >= 1 && peers != g_lastNumInstances) {
 			g_lastNumInstances = peers;
 			PostMessage(MainWindow::GetHWND(), MainWindow::WM_USER_WINDOW_TITLE_CHANGED, 0, 0);
@@ -516,7 +524,6 @@ void System_Notify(SystemNotification notification) {
 	case SystemNotification::ROTATE_UPDATED:
 	case SystemNotification::TEST_JAVA_EXCEPTION:
 		break;
-	case SystemNotification::UI_STATE_CHANGED:
 	case SystemNotification::AUDIO_MODE_CHANGED:
 	case SystemNotification::APP_SWITCH_MODE_CHANGED:
 		break;
@@ -619,7 +626,7 @@ bool System_MakeRequest(SystemRequestType type, int requestId, const std::string
 		return true;
 	case SystemRequestType::ASK_USERNAME_PASSWORD:
 		std::thread([=] {
-			std::string username;
+			std::string username = param2;
 			std::string password;
 			if (UserPasswordBox_GetStrings(MainWindow::GetHInstance(), MainWindow::GetHWND(), ConvertUTF8ToWString(param1).c_str(), &username, &password)) {
 				g_requestManager.PostSystemSuccess(requestId, (username + '\n' + password).c_str());
@@ -630,6 +637,7 @@ bool System_MakeRequest(SystemRequestType type, int requestId, const std::string
 		return true;
 	case SystemRequestType::BROWSE_FOR_IMAGE:
 		std::thread([=] {
+			SetCurrentThreadName("BrowseForImage");
 			std::string out;
 			if (W32Util::BrowseForFileName(true, MainWindow::GetHWND(), ConvertUTF8ToWString(param1).c_str(), nullptr,
 				FinalizeFilter(L"All supported images (*.jpg *.jpeg *.png)|*.jpg;*.jpeg;*.png|All files (*.*)|*.*||").c_str(), L"jpg", out)) {
@@ -651,6 +659,7 @@ bool System_MakeRequest(SystemRequestType type, int requestId, const std::string
 		}
 		const bool load = type == SystemRequestType::BROWSE_FOR_FILE;
 		std::thread([=] {
+			SetCurrentThreadName("BrowseForFile");
 			std::string out;
 			if (W32Util::BrowseForFileName(load, MainWindow::GetHWND(), ConvertUTF8ToWString(param1).c_str(), nullptr, filter.c_str(), L"", out)) {
 				g_requestManager.PostSystemSuccess(requestId, out.c_str());
@@ -663,6 +672,7 @@ bool System_MakeRequest(SystemRequestType type, int requestId, const std::string
 	case SystemRequestType::BROWSE_FOR_FOLDER:
 	{
 		std::thread([=] {
+			SetCurrentThreadName("BrowseForFolder");
 			std::string folder = W32Util::BrowseForFolder2(MainWindow::GetHWND(), param1, param2);
 			if (folder.size()) {
 				g_requestManager.PostSystemSuccess(requestId, folder.c_str());
@@ -692,7 +702,7 @@ bool System_MakeRequest(SystemRequestType type, int requestId, const std::string
 	{
 		auto err = GetI18NCategory(I18NCat::ERRORS);
 		std::string_view backendSwitchError = err->T("GenericBackendSwitchCrash", "PPSSPP crashed while starting. This usually means a graphics driver problem. Try upgrading your graphics drivers.\n\nGraphics backend has been switched:");
-		std::wstring full_error = ConvertUTF8ToWString(StringFromFormat("%s %s", backendSwitchError, param1.c_str()));
+		std::wstring full_error = ConvertUTF8ToWString(StringFromFormat("%.*s %s", (int)backendSwitchError.size(), backendSwitchError.data(), param1.c_str()));
 		std::wstring title = ConvertUTF8ToWString(err->T("GenericGraphicsError", "Graphics Error"));
 		MessageBox(MainWindow::GetHWND(), full_error.c_str(), title.c_str(), MB_OK);
 		return true;

@@ -79,7 +79,9 @@ static const char * const g_logTypeNames[] = {
 	"HLE",
 	"JIT",
 	"LOADER",
-	"ME",  // Media Engine
+	"MPEG",
+	"ATRAC",
+	"ME",  // Rest of the media Engine
 	"MEMMAP",
 	"SASMIX",
 	"SAVESTATE",
@@ -213,12 +215,12 @@ void LogManager::SaveConfig(Section *section) {
 	}
 }
 
-void LogManager::LoadConfig(const Section *section, bool debugDefaults) {
+void LogManager::LoadConfig(const Section *section) {
 	for (int i = 0; i < (int)Log::NUMBER_OF_LOGS; i++) {
 		bool enabled = false;
 		int level = 0;
 		section->Get((std::string(g_logTypeNames[i]) + "Enabled"), &enabled, true);
-		section->Get((std::string(g_logTypeNames[i]) + "Level"), &level, (int)(debugDefaults ? LogLevel::LDEBUG : LogLevel::LERROR));
+		section->Get((std::string(g_logTypeNames[i]) + "Level"), &level, (int)LogLevel::LERROR);
 		g_log[i].enabled = enabled;
 		g_log[i].level = (LogLevel)level;
 	}
@@ -418,7 +420,6 @@ void LogManager::StdioLog(const LogMessage &message) {
 		__android_log_print(mode, LOG_APP_NAME, "%.*s", (int)msg.size(), msg.data());
 	}
 #else
-	std::lock_guard<std::mutex> lock(stdioLock_);
 	char text[2048];
 	snprintf(text, sizeof(text), "%s %s %s", message.timestamp, message.header, message.msg.c_str());
 	text[sizeof(text) - 2] = '\n';
@@ -449,6 +450,8 @@ void LogManager::StdioLog(const LogMessage &message) {
 			break;
 		}
 	}
+
+	std::lock_guard<std::mutex> lock(stdioLock_);
 	fprintf(stderr, "%s%s%s", colorAttr, text, resetAttr);
 #endif
 }
